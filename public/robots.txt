@@ -1,0 +1,20 @@
+# robots.txt for AISOD 3A
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://aisod.cloud/sitemap.xml
+
+# Crawl delay
+Crawl-delay: 1
+
+# Allow all major search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
