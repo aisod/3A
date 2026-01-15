@@ -319,12 +319,13 @@ const languageInstructions = {
   om: 'Respond in Oshiwambo. Keep the same quality and structure, but in Oshiwambo. You have Oshiwambo language capabilities through AISOD\'s Namqula AI and Oshiwambo ChatBot systems.'
 };
 
-// Simple, reliable API call function
+// Reliable API call with simple retry
 async function callOpenRouter(
   apiKey: string,
   model: string,
-  messages: any[]
-): Promise<{ success: boolean; data?: any; error?: any }> {
+  messages: any[],
+  retryCount = 0
+): Promise<any> {
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -338,33 +339,50 @@ async function callOpenRouter(
         model: model,
         messages: messages,
         temperature: 0.5,
-        max_tokens: 2000,
-        top_p: 0.9,
-        frequency_penalty: 0.4,
-        presence_penalty: 0.3
+        max_tokens: 1500,
+        top_p: 0.9
       })
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data && data.choices && data.choices[0] && data.choices[0].message) {
-        return { success: true, data };
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      // Retry once on server errors
+      if (retryCount === 0 && (response.status >= 500 || response.status === 429)) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return callOpenRouter(apiKey, model, messages, 1);
       }
-      return { success: false, error: { type: 'invalid_response', message: 'Invalid response format' } };
-    } else {
-      const errorText = await response.text().catch(() => `Status ${response.status}`);
-      return { success: false, error: { status: response.status, error: errorText.substring(0, 500) } };
+      throw new Error(`API error ${response.status}: ${errorText.substring(0, 200)}`);
     }
+
+    const data = await response.json();
+    
+    if (!data || !data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+      throw new Error('Invalid response format from API');
+    }
+
+    return data;
   } catch (err: any) {
-    return { success: false, error: { type: 'network', message: err?.message || String(err) } };
+    if (retryCount === 0 && err.message && !err.message.includes('Invalid response')) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return callOpenRouter(apiKey, model, messages, 1);
+    }
+    throw err;
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('API request received');
-    const { message, conversationHistory, language = 'en' } = await request.json();
-    console.log('Message received:', message?.substring(0, 50));
+    const { message, conversationHistory = [], language = 'en' } = await request.json();
+    
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return NextResponse.json(
+        { 
+          message: "Please provide a valid question or message.",
+          websites: []
+        },
+        { status: 200 }
+      );
+    }
 
     // Add language instruction to knowledge base
     const languageInstruction = languageInstructions[language as keyof typeof languageInstructions] || languageInstructions.en;
@@ -400,45 +418,36 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log('API key present, length:', OPENROUTER_API_KEY.length);
 
-    // Call OpenRouter API with simple fallback models
-    const models = [
-      'deepseek/deepseek-chat',  // Primary - most reliable
-      'openai/gpt-3.5-turbo'      // Fallback
-    ];
-    
-    let lastError: any = null;
+    // Call OpenRouter API - try DeepSeek first, then GPT-3.5
     let data: any = null;
+    let lastError: any = null;
     
-    // Try each model until one works
+    const models = ['deepseek/deepseek-chat', 'openai/gpt-3.5-turbo'];
+    
     for (const model of models) {
-      const result = await callOpenRouter(OPENROUTER_API_KEY, model, messages);
-      
-      if (result.success && result.data) {
-        data = result.data;
-        console.log(`Successfully used model: ${model}`);
-        break; // Success, exit loop
-      } else {
-        lastError = { model, ...result.error };
-        console.warn(`Model ${model} failed:`, result.error);
-        // Continue to next model
+      try {
+        data = await callOpenRouter(OPENROUTER_API_KEY, model, messages);
+        if (data && data.choices && data.choices[0] && data.choices[0].message) {
+          console.log(`Success with model: ${model}`);
+          break;
+        }
+      } catch (err: any) {
+        lastError = { model, error: err.message };
+        console.warn(`Model ${model} failed:`, err.message);
+        continue;
       }
     }
     
     if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
-      const errorMsg = lastError 
-        ? `All models failed. Last error: ${lastError.model} - ${lastError.type || lastError.status || lastError.message}`
-        : 'All models failed - no response from OpenRouter API';
-      console.error('All models failed:', errorMsg, 'API Key present:', !!OPENROUTER_API_KEY);
-      throw new Error(errorMsg);
+      throw new Error(lastError ? `API failed: ${lastError.error}` : 'No response from AI');
     }
 
-    let aiMessage = data.choices[0]?.message?.content;
+    let aiMessage = data.choices[0].message.content;
 
-    if (!aiMessage) {
-      console.error('No AI message in response:', JSON.stringify(data, null, 2));
-      throw new Error('No response from AI');
+    if (!aiMessage || typeof aiMessage !== 'string') {
+      console.error('Invalid AI message:', aiMessage);
+      throw new Error('Invalid response from AI');
     }
 
     // Clean up any accidental markdown formatting
@@ -452,10 +461,15 @@ export async function POST(request: NextRequest) {
     // Extract potential website references from the response
     const websiteReferences = extractWebsiteReferences(aiMessage);
 
+    // Ensure we always return a valid response
+    if (!aiMessage || aiMessage.trim().length === 0) {
+      throw new Error('Empty response from AI');
+    }
+
     return NextResponse.json({
-      message: aiMessage,
-      websites: websiteReferences
-    });
+      message: aiMessage.trim(),
+      websites: websiteReferences || []
+    }, { status: 200 });
 
   } catch (error: any) {
     console.error('Chat API error:', error);
