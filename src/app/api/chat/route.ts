@@ -319,6 +319,79 @@ const languageInstructions = {
   om: 'Respond in Oshiwambo. Keep the same quality and structure, but in Oshiwambo. You have Oshiwambo language capabilities through AISOD\'s Namqula AI and Oshiwambo ChatBot systems.'
 };
 
+// Helper function to make API call with timeout and retry
+async function callOpenRouterWithRetry(
+  apiKey: string,
+  model: string,
+  messages: any[],
+  retries = 2,
+  timeout = 25000
+): Promise<{ success: boolean; data?: any; error?: any }> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://aisod.cloud',
+            'X-Title': 'AISOD Cloud AI Assistant'
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: messages,
+            temperature: 0.5,
+            max_tokens: 2000,
+            top_p: 0.9,
+            frequency_penalty: 0.4,
+            presence_penalty: 0.3
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.choices && data.choices[0] && data.choices[0].message) {
+            return { success: true, data };
+          }
+        } else {
+          const errorText = await response.text().catch(() => `Status ${response.status}`);
+          if (attempt < retries && (response.status === 429 || response.status >= 500)) {
+            // Retry on rate limit or server errors
+            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
+            continue;
+          }
+          return { success: false, error: { status: response.status, error: errorText } };
+        }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          return { success: false, error: { type: 'timeout', message: 'Request timed out' } };
+        }
+        if (attempt < retries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
+          continue;
+        }
+        return { success: false, error: { type: 'network', message: fetchError.message } };
+      }
+    } catch (err: any) {
+      if (attempt < retries) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
+        continue;
+      }
+      return { success: false, error: { type: 'unknown', message: err?.message || String(err) } };
+    }
+  }
+  return { success: false, error: { type: 'max_retries', message: 'Max retries exceeded' } };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { message, conversationHistory, language = 'en' } = await request.json();
@@ -354,7 +427,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call OpenRouter API with fallback models (DeepSeek is most reliable)
+    // Call OpenRouter API with fallback models and retry logic
     const models = [
       'deepseek/deepseek-chat',  // Primary - most reliable and free-tier friendly
       'openai/gpt-3.5-turbo',     // Fallback 1
@@ -365,56 +438,25 @@ export async function POST(request: NextRequest) {
     let data: any = null;
     let successfulModel = '';
     
-    // Try each model until one works
+    // Try each model with retries until one works
     for (const model of models) {
-      try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://aisod.cloud',
-            'X-Title': 'AISOD Cloud AI Assistant'
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: messages,
-            temperature: 0.5,
-            max_tokens: 2000,  // Reduced to avoid token limits
-            top_p: 0.9,
-            frequency_penalty: 0.4,
-            presence_penalty: 0.3
-          })
-        });
-        
-        if (response.ok) {
-          data = await response.json();
-          if (data && data.choices && data.choices[0] && data.choices[0].message) {
-            successfulModel = model;
-            console.log(`Successfully used model: ${model}`);
-            break; // Success, exit loop
-          }
-        } else {
-          // Read error text without consuming response
-          let errorText = '';
-          try {
-            errorText = await response.text();
-          } catch (e) {
-            errorText = `Status ${response.status}`;
-          }
-          lastError = { model, status: response.status, error: errorText };
-          console.warn(`Model ${model} failed:`, response.status, errorText.substring(0, 200));
-        }
-      } catch (err: any) {
-        lastError = { model, error: err?.message || String(err) };
-        console.warn(`Model ${model} error:`, err?.message || String(err));
-        continue; // Try next model
+      const result = await callOpenRouterWithRetry(OPENROUTER_API_KEY, model, messages, 2, 25000);
+      
+      if (result.success && result.data) {
+        data = result.data;
+        successfulModel = model;
+        console.log(`Successfully used model: ${model}`);
+        break; // Success, exit loop
+      } else {
+        lastError = { model, ...result.error };
+        console.warn(`Model ${model} failed:`, result.error);
+        // Continue to next model
       }
     }
     
     if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
       const errorMsg = lastError 
-        ? `All models failed. Last error: ${lastError.model} - ${lastError.status || lastError.error}`
+        ? `All models failed. Last error: ${lastError.model} - ${lastError.type || lastError.status || lastError.message}`
         : 'All models failed - no response from OpenRouter API';
       console.error('All models failed:', errorMsg);
       throw new Error(errorMsg);
@@ -451,25 +493,30 @@ export async function POST(request: NextRequest) {
     console.error('Full error details:', {
       message: errorMessage,
       apiKeyPresent: !!OPENROUTER_API_KEY,
-      apiKeyLength: OPENROUTER_API_KEY?.length || 0
+      apiKeyLength: OPENROUTER_API_KEY?.length || 0,
+      timestamp: new Date().toISOString()
     });
     
-    // Provide helpful error message
-    let userMessage = "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.";
+    // Provide helpful error message with fallback response
+    let userMessage = "I'm sorry, I'm experiencing some technical difficulties right now. Please try again in a moment, or contact AISOD directly at +264 81 497 1482 or info@aisodinstitute.tech for immediate assistance.";
     
-    if (errorMessage.includes('API key')) {
+    if (errorMessage.includes('API key') || errorMessage.includes('not configured')) {
       userMessage = "I'm experiencing a configuration issue. Please contact AISOD support at +264 81 497 1482 or info@aisodinstitute.tech.";
-    } else if (errorMessage.includes('All models failed')) {
-      userMessage = "I'm temporarily unavailable. Please try again in a few moments, or contact AISOD directly at +264 81 497 1482 for immediate assistance.";
+    } else if (errorMessage.includes('timeout')) {
+      userMessage = "The request took too long to process. Please try again with a shorter question, or contact AISOD at +264 81 497 1482.";
+    } else if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+      userMessage = "I'm receiving too many requests right now. Please wait a moment and try again, or contact AISOD at +264 81 497 1482.";
     }
     
+    // Return graceful error response
     return NextResponse.json(
       { 
         message: userMessage,
         error: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
         websites: [
           { name: 'AISOD Main Website', url: 'https://aisod.tech' },
-          { name: 'Contact AISOD', url: 'https://aisod.tech' }
+          { name: 'Contact AISOD', url: 'https://aisod.tech' },
+          { name: 'AISOD Solutions', url: 'https://solutions.aisod.tech' }
         ]
       },
       { status: 200 } // Return 200 so frontend doesn't show error state
