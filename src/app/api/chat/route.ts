@@ -319,82 +319,52 @@ const languageInstructions = {
   om: 'Respond in Oshiwambo. Keep the same quality and structure, but in Oshiwambo. You have Oshiwambo language capabilities through AISOD\'s Namqula AI and Oshiwambo ChatBot systems.'
 };
 
-// Helper function to make API call with timeout and retry
-async function callOpenRouterWithRetry(
+// Simple, reliable API call function
+async function callOpenRouter(
   apiKey: string,
   model: string,
-  messages: any[],
-  retries = 2,
-  timeout = 25000
+  messages: any[]
 ): Promise<{ success: boolean; data?: any; error?: any }> {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      // Create abort controller for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://aisod.cloud',
+        'X-Title': 'AISOD Cloud AI Assistant'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        temperature: 0.5,
+        max_tokens: 2000,
+        top_p: 0.9,
+        frequency_penalty: 0.4,
+        presence_penalty: 0.3
+      })
+    });
 
-      try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://aisod.cloud',
-            'X-Title': 'AISOD Cloud AI Assistant'
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: messages,
-            temperature: 0.5,
-            max_tokens: 2000,
-            top_p: 0.9,
-            frequency_penalty: 0.4,
-            presence_penalty: 0.3
-          }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.choices && data.choices[0] && data.choices[0].message) {
-            return { success: true, data };
-          }
-        } else {
-          const errorText = await response.text().catch(() => `Status ${response.status}`);
-          if (attempt < retries && (response.status === 429 || response.status >= 500)) {
-            // Retry on rate limit or server errors
-            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
-            continue;
-          }
-          return { success: false, error: { status: response.status, error: errorText } };
-        }
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        if (fetchError.name === 'AbortError') {
-          return { success: false, error: { type: 'timeout', message: 'Request timed out' } };
-        }
-        if (attempt < retries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
-          continue;
-        }
-        return { success: false, error: { type: 'network', message: fetchError.message } };
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.choices && data.choices[0] && data.choices[0].message) {
+        return { success: true, data };
       }
-    } catch (err: any) {
-      if (attempt < retries) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
-        continue;
-      }
-      return { success: false, error: { type: 'unknown', message: err?.message || String(err) } };
+      return { success: false, error: { type: 'invalid_response', message: 'Invalid response format' } };
+    } else {
+      const errorText = await response.text().catch(() => `Status ${response.status}`);
+      return { success: false, error: { status: response.status, error: errorText.substring(0, 500) } };
     }
+  } catch (err: any) {
+    return { success: false, error: { type: 'network', message: err?.message || String(err) } };
   }
-  return { success: false, error: { type: 'max_retries', message: 'Max retries exceeded' } };
 }
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('API request received');
     const { message, conversationHistory, language = 'en' } = await request.json();
+    console.log('Message received:', message?.substring(0, 50));
 
     // Add language instruction to knowledge base
     const languageInstruction = languageInstructions[language as keyof typeof languageInstructions] || languageInstructions.en;
@@ -420,31 +390,33 @@ export async function POST(request: NextRequest) {
       console.error('OPENROUTER_API_KEY is missing from environment variables');
       return NextResponse.json(
         { 
-          error: 'OpenRouter API key is not configured. Please check Netlify environment variables.',
-          details: 'OPENROUTER_API_KEY environment variable is missing'
+          message: 'I\'m experiencing a configuration issue. Please contact AISOD support at +264 81 497 1482 or info@aisodinstitute.tech.',
+          error: 'OpenRouter API key is not configured',
+          websites: [
+            { name: 'AISOD Main Website', url: 'https://aisod.tech' }
+          ]
         },
-        { status: 500 }
+        { status: 200 }
       );
     }
+    
+    console.log('API key present, length:', OPENROUTER_API_KEY.length);
 
-    // Call OpenRouter API with fallback models and retry logic
+    // Call OpenRouter API with simple fallback models
     const models = [
-      'deepseek/deepseek-chat',  // Primary - most reliable and free-tier friendly
-      'openai/gpt-3.5-turbo',     // Fallback 1
-      'google/gemini-pro'         // Fallback 2
+      'deepseek/deepseek-chat',  // Primary - most reliable
+      'openai/gpt-3.5-turbo'      // Fallback
     ];
     
     let lastError: any = null;
     let data: any = null;
-    let successfulModel = '';
     
-    // Try each model with retries until one works
+    // Try each model until one works
     for (const model of models) {
-      const result = await callOpenRouterWithRetry(OPENROUTER_API_KEY, model, messages, 2, 25000);
+      const result = await callOpenRouter(OPENROUTER_API_KEY, model, messages);
       
       if (result.success && result.data) {
         data = result.data;
-        successfulModel = model;
         console.log(`Successfully used model: ${model}`);
         break; // Success, exit loop
       } else {
@@ -458,7 +430,7 @@ export async function POST(request: NextRequest) {
       const errorMsg = lastError 
         ? `All models failed. Last error: ${lastError.model} - ${lastError.type || lastError.status || lastError.message}`
         : 'All models failed - no response from OpenRouter API';
-      console.error('All models failed:', errorMsg);
+      console.error('All models failed:', errorMsg, 'API Key present:', !!OPENROUTER_API_KEY);
       throw new Error(errorMsg);
     }
 
