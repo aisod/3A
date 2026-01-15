@@ -132,7 +132,12 @@ export default function Home() {
     setIsLoading(true)
     
     const userMessage = { role: 'user' as const, content: searchQuery }
-    setMessages([userMessage])
+    
+    // Store current messages before updating
+    const currentMessages = messages
+    
+    // Add user message to conversation
+    setMessages(prev => [...prev, userMessage])
     setQuery('')
 
     try {
@@ -143,7 +148,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           message: searchQuery,
-          conversationHistory: messages,
+          conversationHistory: currentMessages,
           language: language
         })
       })
