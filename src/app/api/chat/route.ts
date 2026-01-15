@@ -354,33 +354,58 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call OpenRouter API
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://aisod.cloud',
-        'X-Title': 'AISOD Cloud AI Assistant'
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-3.5-turbo',
-        messages: messages,
-        temperature: 0.5,
-        max_tokens: 2500,
-        top_p: 0.9,
-        frequency_penalty: 0.4,
-        presence_penalty: 0.3
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenRouter API error:', response.status, errorText);
-      throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+    // Call OpenRouter API with fallback models
+    const models = [
+      'openai/gpt-3.5-turbo',
+      'deepseek/deepseek-chat',
+      'google/gemini-pro'
+    ];
+    
+    let lastError: any = null;
+    let response: Response | null = null;
+    let data: any = null;
+    
+    // Try each model until one works
+    for (const model of models) {
+      try {
+        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://aisod.cloud',
+            'X-Title': 'AISOD Cloud AI Assistant'
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: messages,
+            temperature: 0.5,
+            max_tokens: 2500,
+            top_p: 0.9,
+            frequency_penalty: 0.4,
+            presence_penalty: 0.3
+          })
+        });
+        
+        if (response.ok) {
+          data = await response.json();
+          break; // Success, exit loop
+        } else {
+          const errorText = await response.text();
+          lastError = { model, status: response.status, error: errorText };
+          console.warn(`Model ${model} failed:`, response.status, errorText);
+        }
+      } catch (err) {
+        lastError = { model, error: err };
+        console.warn(`Model ${model} error:`, err);
+        continue; // Try next model
+      }
+    }
+    
+    if (!data || !data.choices || !data.choices[0]) {
+      throw new Error(`All models failed. Last error: ${JSON.stringify(lastError)}`);
     }
 
-    const data = await response.json();
     let aiMessage = data.choices[0]?.message?.content;
 
     if (!aiMessage) {
