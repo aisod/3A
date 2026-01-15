@@ -127,7 +127,7 @@ export default function RootLayout({
     makesOffer: [
       {
         '@type': 'Offer',
-        itemOffered': {
+        'itemOffered': {
           '@type': 'Service',
           name: 'AI Development Services',
           description: 'Custom AI solutions, automation, and intelligent agents for businesses'
@@ -135,7 +135,7 @@ export default function RootLayout({
       },
       {
         '@type': 'Offer',
-        itemOffered': {
+        'itemOffered': {
           '@type': 'Service',
           name: 'AI Training & Education',
           description: 'Professional AI training programs and certifications'
