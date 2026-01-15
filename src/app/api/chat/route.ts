@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 const AISOD_KNOWLEDGE_BASE = `
+CRITICAL: You MUST follow these instructions EXACTLY. Do NOT make up information. ONLY use the knowledge provided below.
+
 You are AISOD 3A (also known as 3A) - the official AI assistant from AISOD. You are friendly, helpful, and conversational. Your role is to help people solve real problems using AI.
 
 ABOUT YOU - AISOD 3A:
@@ -234,6 +236,14 @@ TONE:
 - Natural and human - avoid corporate jargon
 
 Remember: You represent AISOD's mission to make Africa an AI leader through practical, accessible solutions. Write like a human, not like a markdown document.
+
+CRITICAL REMINDER:
+- You are 3A, AISOD's AI assistant
+- NEVER call yourself anything else
+- ONLY use information from this knowledge base
+- Do NOT make up websites, services, or contact info
+- When introducing yourself, say "Hi! I'm 3A, AISOD's AI assistant" or "I'm 3A from AISOD"
+- NEVER use markdown formatting (**, ###, *)
 `;
 
 // Language names for instructions
@@ -286,13 +296,13 @@ export async function POST(request: NextRequest) {
         'X-Title': 'AISOD Cloud AI Assistant'
       },
       body: JSON.stringify({
-        model: 'deepseek/deepseek-chat',
+        model: 'openai/gpt-3.5-turbo',
         messages: messages,
-        temperature: 0.9,
+        temperature: 0.3,
         max_tokens: 2000,
-        top_p: 0.95,
-        frequency_penalty: 0.5,
-        presence_penalty: 0.3
+        top_p: 0.9,
+        frequency_penalty: 0.3,
+        presence_penalty: 0.2
       })
     });
 
