@@ -139,3 +139,70 @@ a:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==========================================
+   MOBILE OPTIMIZATION & AUTOFILL FIX
+   ========================================== */
+
+/* Remove browser autofill background and styles */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px white inset !important;
+  -webkit-text-fill-color: #1f2937 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Remove input styling on mobile */
+input[type="text"],
+input[type="search"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 0;
+}
+
+/* Remove tap highlight on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Better touch targets for mobile */
+@media (max-width: 640px) {
+  button,
+  a,
+  input {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Optimize font sizes for mobile */
+  input::placeholder {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+  
+  input {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+}
+
+/* Remove any inner shadows or highlights */
+input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Ensure smooth scrolling on mobile */
+html {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fix mobile viewport height */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific */
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
+}

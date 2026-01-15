@@ -374,10 +374,10 @@ export default function Home() {
              <form onSubmit={handleSubmit} className="w-full max-w-2xl px-4">
                <div className="relative">
                  <div 
-                   className="relative bg-white rounded-full shadow-md hover:shadow-lg border border-slate-300 focus-within:border-blue-500 focus-within:shadow-xl transition-all duration-200 cursor-text"
+                   className="relative bg-white rounded-full shadow-md hover:shadow-lg border-2 border-slate-300 focus-within:border-blue-500 focus-within:shadow-xl transition-all duration-200 cursor-text overflow-hidden"
                    onClick={() => inputRef.current?.focus()}
                  >
-                   <div className="flex items-center px-4 sm:px-5 py-3 sm:py-3.5">
+                   <div className="flex items-center px-4 sm:px-6 py-3.5 sm:py-4">
                      <Search className="w-5 h-5 text-slate-400 flex-shrink-0" />
                      <input
                        ref={inputRef}
@@ -385,10 +385,14 @@ export default function Home() {
                        value={query}
                        onChange={(e) => setQuery(e.target.value)}
                        placeholder={t.searchPlaceholder}
-                       className="flex-1 ml-3 sm:ml-4 text-base bg-transparent border-none outline-none text-slate-900 placeholder-slate-500"
+                       className="flex-1 ml-3 sm:ml-4 text-base sm:text-lg bg-transparent border-none outline-none text-slate-900 placeholder-slate-400 appearance-none"
                        aria-label="Search AISOD"
                        role="searchbox"
                        autoComplete="off"
+                       style={{
+                         WebkitAppearance: 'none',
+                         WebkitTapHighlightColor: 'transparent'
+                       }}
                      />
                      {query && (
                        <button
@@ -407,11 +411,11 @@ export default function Home() {
                        type="submit"
                        disabled={!query.trim()}
                        onClick={(e) => e.stopPropagation()}
-                       className="p-2 sm:p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                       className="p-2.5 sm:p-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
                        aria-label="Submit search"
                        aria-disabled={!query.trim()}
                      >
-                       <Send className="w-4 h-4" />
+                       <Send className="w-4 h-4 sm:w-5 sm:h-5" />
                      </button>
                    </div>
                  </div>
@@ -424,7 +428,7 @@ export default function Home() {
                  <button
                    key={suggestion.short}
                    onClick={() => setQuery(suggestion.full)}
-                   className="px-3 sm:px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-full border border-slate-200 hover:border-slate-300 transition-all text-xs sm:text-sm font-medium"
+                   className="px-4 sm:px-5 py-2.5 sm:py-3 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 rounded-full border-2 border-slate-200 hover:border-blue-400 transition-all text-sm sm:text-base font-medium shadow-sm hover:shadow-md min-h-[44px] flex items-center"
                  >
                    {suggestion.short}
                  </button>
@@ -494,17 +498,22 @@ export default function Home() {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                        placeholder={t.chatPlaceholder}
-                       className="w-full px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+                       className="w-full px-4 py-3 sm:py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl sm:rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base appearance-none"
                        aria-label="Chat input"
+                       autoComplete="off"
+                       style={{
+                         WebkitAppearance: 'none',
+                         WebkitTapHighlightColor: 'transparent'
+                       }}
                       />
                     </div>
                     <button
                       type="submit"
                       disabled={!query.trim() || isLoading}
-                      className="p-2.5 sm:p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="p-3 sm:p-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[48px] min-w-[48px] flex items-center justify-center"
                       aria-label="Send message"
                     >
-                      <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <Send className="w-5 h-5" />
                     </button>
                   </div>
                 </form>
