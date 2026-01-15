@@ -113,6 +113,14 @@ CORE MISSION:
 - Location: Office 18, Go Work Offices Suits, Maerua Mall, Windhoek, Namibia
 - Contact: +264 81 497 1482, info@aisodinstitute.tech
 
+BANK ACCOUNT DETAILS FOR PAYMENTS:
+- Account Name: AISOD INVESTMENTS CC
+- Bank Name: FNB Namibia
+- Account Type: Gold Business Account
+- Account Number: 64281901346
+- Branch Name and No: Windhoek 280172
+- SWIFT Code: FIRNNANX
+
 MAIN AISOD WEBSITES & SERVICES:
 1. Main Website: https://aisod.tech - Central hub for AI-powered systems, web and mobile applications, AI agents, automations, consultations, model building and fine-tuning
 
@@ -162,30 +170,71 @@ EDUCATION & TRAINING:
    - 9 months training, 9+ real projects, 7+ technologies
    - Three tiers: Free N$0, Standard N$200/month, Premium N$1,334/month
 
+10. AISOD AI Clubs Program: https://www.aisodinstitute.tech/slp - School-Based AI Learning Clubs
+   - Birthed from AISOD Superior Learning Program for Schools
+   - Focus: AI Development, AI Automations, AI Agents, AI-Powered Software Development, AI Design, Digital Technology
+   - Follows PAIED curriculum with 90% practicals and 10% theory
+   - Each club can have up to 50 learners for quality teaching
+   - Provides hands-on learning, teamwork, and real AI projects
+
+   ENROLLMENT OPTIONS:
+   - Option 1: Enroll Online at https://aisodx.tech - Fee: N$200/month (includes Standard AISOD X subscription)
+   - Option 2: Enroll Through School - Fee: N$200/month (includes Standard AISOD X subscription)
+   - Option 3: University Sessions (for schools that don't host clubs) - Fee: N$300/month
+     * Sessions held at NUST (Namibian University of Science and Technology) or UNAM (University of Namibia)
+     * Learners already in school sessions pay additional N$100 (total N$300) to attend university sessions
+
+   CLUB LEADERSHIP:
+   - Club President: Oversees daily running, ensures AISOD rules are followed, can teach/minister one club, can oversee multiple clubs
+   - Club Minister: Assists president in teaching, manages day-to-day activities
+   - Requirements: Must enroll in AISOD PAIED Program at N$1,334/month
+   - Scholarship Opportunity: Pay first month (N$1,334), if you pass, attend remaining 8 months for free
+
+   REVENUE SHARING:
+   - If Club Minister runs club: School 30%, Club Minister 20%, Club President 10%, AISOD 40%
+   - If Club President runs club: School 30%, Club President 30%, AISOD 40%
+
+   BENEFITS FOR LEARNERS:
+   - Practical AI and automation skills
+   - Real-world projects and teamwork
+   - AISOD certification upon completion
+   - Participate in hackathons with prizes N$2,000 to N$5,000
+   - Access to paid internships during holidays
+   - Opportunity for part-time or full-time jobs after school
+   - Sell projects, skills, and innovations on AISOD X
+   - Standard AISOD X subscription included
+
+   RULES:
+   - No club can exceed 50 learners
+   - One Club President can teach/minister only one club but can oversee multiple clubs
+   - Multiple clubs can exist in same school with different presidents
+   - Leaders get paid only for active, verified clubs
+   - AISOD maintains control over curriculum, certification, branding, and compliance
+
 CULTURAL & INNOVATION:
-10. Namqula AI: https://namqula.online/ & https://namqula.aisod.tech/
+11. Namqula AI: https://namqula.online/ & https://namqula.aisod.tech/
     - AI-powered word games preserving Namibian languages
     - Oshiwambo, Khoekhoegowab, and other indigenous languages
     - First indigenous Namibian AI language model (AISOD AI-LRLM)
 
-11. Oshiwambo ChatBot: https://oshiwambochatbot.aisod.tech/
+12. Oshiwambo ChatBot: https://oshiwambochatbot.aisod.tech/
     - "Your Digital Elder" for language and cultural preservation
     - Real-time translation between Oshiwambo dialects and English
     - 50,000+ cultural proverbs, stories, and oral traditions
 
 INVESTMENT & BUSINESS:
-12. AISOD BIC: https://www.aisodbic.online/ - Business & Innovation Center
+13. AISOD BIC: https://www.aisodbic.online/ - Business & Innovation Center
     - Cash investment platform with N$200/month membership tiers
     - Deal syndication model with 5% carry
     - Sponsored by Future Africa Leaders Foundation (FALF)
 
-13. AISOD Shop: https://shop.aisod.tech/ - Commercial and financial engine
+14. AISOD Shop: https://shop.aisod.tech/ - Commercial and financial engine
     - Nedbank PayToday integration for local payments
     - Centralized payment processor for all AISOD platforms
 
 COMPETITIONS & EVENTS:
-14. AISOD Hackathon: https://hackathon.aisod.tech/ - 150+ innovators, N$1,000-N$20,000 prizes
-15. AISOD Hiring Competition: https://competition.aisod.tech/ - UI/UX Design Competition
+15. AISOD Hackathon: https://hackathon.aisod.tech/ - 150+ innovators, N$1,000-N$20,000 prizes
+16. AISOD Hiring Competition: https://competition.aisod.tech/ - UI/UX Design Competition
 
 KEY ACHIEVEMENTS:
 - 150+ happy clients across sectors
