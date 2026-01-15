@@ -354,21 +354,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call OpenRouter API with fallback models
+    // Call OpenRouter API with fallback models (DeepSeek is most reliable)
     const models = [
-      'openai/gpt-3.5-turbo',
-      'deepseek/deepseek-chat',
-      'google/gemini-pro'
+      'deepseek/deepseek-chat',  // Primary - most reliable and free-tier friendly
+      'openai/gpt-3.5-turbo',     // Fallback 1
+      'google/gemini-pro'         // Fallback 2
     ];
     
     let lastError: any = null;
-    let response: Response | null = null;
     let data: any = null;
+    let successfulModel = '';
     
     // Try each model until one works
     for (const model of models) {
       try {
-        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
@@ -380,7 +380,7 @@ export async function POST(request: NextRequest) {
             model: model,
             messages: messages,
             temperature: 0.5,
-            max_tokens: 2500,
+            max_tokens: 2000,  // Reduced to avoid token limits
             top_p: 0.9,
             frequency_penalty: 0.4,
             presence_penalty: 0.3
@@ -389,21 +389,35 @@ export async function POST(request: NextRequest) {
         
         if (response.ok) {
           data = await response.json();
-          break; // Success, exit loop
+          if (data && data.choices && data.choices[0] && data.choices[0].message) {
+            successfulModel = model;
+            console.log(`Successfully used model: ${model}`);
+            break; // Success, exit loop
+          }
         } else {
-          const errorText = await response.text();
+          // Read error text without consuming response
+          let errorText = '';
+          try {
+            errorText = await response.text();
+          } catch (e) {
+            errorText = `Status ${response.status}`;
+          }
           lastError = { model, status: response.status, error: errorText };
-          console.warn(`Model ${model} failed:`, response.status, errorText);
+          console.warn(`Model ${model} failed:`, response.status, errorText.substring(0, 200));
         }
-      } catch (err) {
-        lastError = { model, error: err };
-        console.warn(`Model ${model} error:`, err);
+      } catch (err: any) {
+        lastError = { model, error: err?.message || String(err) };
+        console.warn(`Model ${model} error:`, err?.message || String(err));
         continue; // Try next model
       }
     }
     
-    if (!data || !data.choices || !data.choices[0]) {
-      throw new Error(`All models failed. Last error: ${JSON.stringify(lastError)}`);
+    if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
+      const errorMsg = lastError 
+        ? `All models failed. Last error: ${lastError.model} - ${lastError.status || lastError.error}`
+        : 'All models failed - no response from OpenRouter API';
+      console.error('All models failed:', errorMsg);
+      throw new Error(errorMsg);
     }
 
     let aiMessage = data.choices[0]?.message?.content;
@@ -432,21 +446,33 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Chat API error:', error);
     const errorMessage = error?.message || 'Unknown error';
-    const errorDetails = error?.stack || 'No stack trace available';
     
     // Log full error for debugging
     console.error('Full error details:', {
       message: errorMessage,
-      stack: errorDetails,
-      apiKeyPresent: !!OPENROUTER_API_KEY
+      apiKeyPresent: !!OPENROUTER_API_KEY,
+      apiKeyLength: OPENROUTER_API_KEY?.length || 0
     });
+    
+    // Provide helpful error message
+    let userMessage = "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.";
+    
+    if (errorMessage.includes('API key')) {
+      userMessage = "I'm experiencing a configuration issue. Please contact AISOD support at +264 81 497 1482 or info@aisodinstitute.tech.";
+    } else if (errorMessage.includes('All models failed')) {
+      userMessage = "I'm temporarily unavailable. Please try again in a few moments, or contact AISOD directly at +264 81 497 1482 for immediate assistance.";
+    }
     
     return NextResponse.json(
       { 
-        error: 'Failed to get AI response. Please try again.',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+        message: userMessage,
+        error: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+        websites: [
+          { name: 'AISOD Main Website', url: 'https://aisod.tech' },
+          { name: 'Contact AISOD', url: 'https://aisod.tech' }
+        ]
       },
-      { status: 500 }
+      { status: 200 } // Return 200 so frontend doesn't show error state
     );
   }
 }
