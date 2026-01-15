@@ -344,8 +344,12 @@ export async function POST(request: NextRequest) {
     ];
 
     if (!OPENROUTER_API_KEY) {
+      console.error('OPENROUTER_API_KEY is missing from environment variables');
       return NextResponse.json(
-        { error: 'OpenRouter API key is not configured.' },
+        { 
+          error: 'OpenRouter API key is not configured. Please check Netlify environment variables.',
+          details: 'OPENROUTER_API_KEY environment variable is missing'
+        },
         { status: 500 }
       );
     }
@@ -371,13 +375,16 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('OpenRouter API error:', response.status, errorText);
+      throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     let aiMessage = data.choices[0]?.message?.content;
 
     if (!aiMessage) {
+      console.error('No AI message in response:', JSON.stringify(data, null, 2));
       throw new Error('No response from AI');
     }
 
@@ -397,10 +404,23 @@ export async function POST(request: NextRequest) {
       websites: websiteReferences
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Chat API error:', error);
+    const errorMessage = error?.message || 'Unknown error';
+    const errorDetails = error?.stack || 'No stack trace available';
+    
+    // Log full error for debugging
+    console.error('Full error details:', {
+      message: errorMessage,
+      stack: errorDetails,
+      apiKeyPresent: !!OPENROUTER_API_KEY
+    });
+    
     return NextResponse.json(
-      { error: 'Failed to get AI response. Please try again.' },
+      { 
+        error: 'Failed to get AI response. Please try again.',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      },
       { status: 500 }
     );
   }
