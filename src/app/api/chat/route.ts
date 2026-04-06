@@ -309,6 +309,17 @@ CRITICAL REMINDER:
 - Do NOT make up websites, services, or contact info
 - When introducing yourself, say "Hi! I'm 3A, AISOD's AI assistant" or "I'm 3A from AISOD"
 - NEVER use markdown formatting (**, ###, *)
+
+ONBOARDING - ASKING FOR USER INFO:
+- On the VERY FIRST interaction, warmly introduce yourself and ask for their name, surname, age, email, and cell phone number before helping them
+- Be natural and conversational about it - not like filling out a form
+- Example: "Hi! I'm 3A, AISOD's AI assistant. I'd love to help you! Before we get started, could you tell me your name, surname, age, email, and cell phone number so I can personalize your experience?"
+- If the user provides partial info, gently ask for the remaining details
+- Once you have all the info, thank them, confirm it back briefly, and then proceed to help with their question
+- Use their first name throughout the conversation to make it personal and warm
+- Reference their age when suggesting relevant programs (e.g., youth programs for younger users, career programs for adults)
+- If the user refuses to share info, be respectful and still help them
+- After collecting their info, you can reference their location if they mentioned it to give locally relevant advice
 `;
 
 // Language names for instructions
@@ -477,33 +488,84 @@ export async function POST(request: NextRequest) {
           { role: 'assistant' as const, content: aiMessage.trim() }
         ];
 
-        // If this is the first message and we have user info, create/find user
-        if (userInfo) {
-          let { data: existingUser } = await supabaseServer
-            .from('users')
-            .select('id')
-            .eq('email', userInfo.email)
-            .single();
+        // Extract user info from conversation using AI
+        const extractPrompt = [
+          {
+            role: 'system' as const,
+            content: `Extract the user's name, surname, age, email, and phone number from this conversation. Return ONLY valid JSON with no other text. Use null for any field not found. Example: {"name": "John", "surname": "Doe", "email": "john@example.com", "phone": "+26481497148", "age": 25}`
+          },
+          ...fullConversation.map((msg: any) => ({
+            role: msg.role,
+            content: msg.content
+          }))
+        ];
 
-          let userId: string;
+        let extractedInfo: any = null;
+        try {
+          const extractResponse = await callOpenRouter(OPENROUTER_API_KEY, 'openai/gpt-4o-mini', extractPrompt);
+          const rawContent = extractResponse.choices[0].message.content;
+          // Strip any markdown/code block wrappers
+          const jsonStr = rawContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          extractedInfo = JSON.parse(jsonStr);
+        } catch (e) {
+          console.warn('Failed to extract user info:', e);
+        }
 
-          if (existingUser) {
-            userId = existingUser.id;
-          } else {
+        // If we extracted info, save/update user
+        if (extractedInfo && (extractedInfo.name || extractedInfo.surname || extractedInfo.email || extractedInfo.phone)) {
+          let userId: string | null = null;
+
+          // Try to find existing user by email or phone
+          if (extractedInfo.email) {
+            const { data: existingByEmail } = await supabaseServer
+              .from('users')
+              .select('id')
+              .eq('email', extractedInfo.email)
+              .single();
+            if (existingByEmail) userId = existingByEmail.id;
+          }
+
+          if (!userId && extractedInfo.phone) {
+            const { data: existingByPhone } = await supabaseServer
+              .from('users')
+              .select('id')
+              .eq('phone', extractedInfo.phone)
+              .single();
+            if (existingByPhone) userId = existingByPhone.id;
+          }
+
+          if (!userId) {
+            // Create new user
             const { data: newUser, error: userError } = await supabaseServer
               .from('users')
               .insert({
-                name: userInfo.name || '',
-                surname: userInfo.surname || '',
-                email: userInfo.email || null,
-                location: userInfo.location || null,
-                phone: userInfo.phone || null,
+                name: extractedInfo.name || '',
+                surname: extractedInfo.surname || '',
+                email: extractedInfo.email || null,
+                phone: extractedInfo.phone || null,
+                age: extractedInfo.age || null,
               })
               .select('id')
               .single();
 
-            if (userError) throw userError;
-            userId = newUser.id;
+            if (!userError && newUser) {
+              userId = newUser.id;
+            }
+          } else {
+            // Update existing user with any new info
+            const updateFields: any = {};
+            if (extractedInfo.name) updateFields.name = extractedInfo.name;
+            if (extractedInfo.surname) updateFields.surname = extractedInfo.surname;
+            if (extractedInfo.email) updateFields.email = extractedInfo.email;
+            if (extractedInfo.phone) updateFields.phone = extractedInfo.phone;
+            if (extractedInfo.age) updateFields.age = extractedInfo.age;
+
+            if (Object.keys(updateFields).length > 0) {
+              await supabaseServer
+                .from('users')
+                .update(updateFields)
+                .eq('id', userId);
+            }
           }
 
           // Check if conversation session already exists
@@ -551,7 +613,7 @@ export async function POST(request: NextRequest) {
               });
           }
         } else {
-          // No user info (follow-up message), just update messages
+          // No user info extracted yet, just update conversation messages if it exists
           const { data: existingConv } = await supabaseServer
             .from('conversations')
             .select('id')

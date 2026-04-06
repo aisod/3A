@@ -6,6 +6,7 @@ create table if not exists public.users (
   email text,
   location text,
   phone text,
+  age integer,
   created_at timestamp with time zone default now()
 );
 

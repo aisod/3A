@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Users, MessageSquare, BarChart3, ArrowLeft, Eye, Search, LogOut, RefreshCw, Clock, MapPin, Phone, Mail } from 'lucide-react'
+import { Users, MessageSquare, BarChart3, ArrowLeft, Eye, Search, LogOut, RefreshCw, Clock, MapPin, Phone, Mail, Calendar } from 'lucide-react'
 
 type User = {
   id: string
@@ -10,6 +10,7 @@ type User = {
   email: string | null
   phone: string | null
   location: string | null
+  age: number | null
   created_at: string
 }
 
@@ -352,6 +353,12 @@ export default function AdminPage() {
                                 <span>{user.phone}</span>
                               </div>
                             )}
+                            {user.age && (
+                              <div className="flex items-center space-x-2 text-sm text-slate-500">
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span>{user.age} years old</span>
+                              </div>
+                            )}
                             {user.location && (
                               <div className="flex items-center space-x-2 text-sm text-slate-500">
                                 <MapPin className="w-3.5 h-3.5" />
@@ -458,6 +465,12 @@ export default function AdminPage() {
                       <div>
                         <span className="text-sm text-slate-500">Phone</span>
                         <p className="font-medium text-slate-900">{selectedConv.users.phone}</p>
+                      </div>
+                    )}
+                    {selectedConv.users.age && (
+                      <div>
+                        <span className="text-sm text-slate-500">Age</span>
+                        <p className="font-medium text-slate-900">{selectedConv.users.age}</p>
                       </div>
                     )}
                     {selectedConv.users.location && (
