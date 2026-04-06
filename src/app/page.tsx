@@ -602,17 +602,15 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      {isSearchMode && (
-        <footer className="p-4 sm:p-6 text-center">
-          <div className="text-xs sm:text-sm text-slate-500 flex flex-wrap justify-center gap-4 sm:gap-6">
-            <a href="https://aisod.tech" className="hover:text-slate-700 transition-colors">About AISOD</a>
-            <a href="https://aisod.tech" className="hover:text-slate-700 transition-colors">Privacy</a>
-            <a href="https://aisod.tech" className="hover:text-slate-700 transition-colors">Terms</a>
-            <a href="mailto:info@aisodinstitute.tech" className="hover:text-slate-700 transition-colors">Contact</a>
-          </div>
-          <p className="text-xs text-slate-400 mt-2">© 2026 AISOD Inc. All rights reserved.</p>
-        </footer>
-      )}
+      <footer className="p-4 sm:p-6 text-center border-t border-slate-200">
+        <div className="text-xs sm:text-sm text-slate-500 flex flex-wrap justify-center gap-4 sm:gap-6">
+          <a href="https://aisod.tech" className="hover:text-slate-700 transition-colors">About AISOD</a>
+          <a href="https://aisod.tech" className="hover:text-slate-700 transition-colors">Privacy</a>
+          <a href="https://aisod.tech" className="hover:text-slate-700 transition-colors">Terms</a>
+          <a href="mailto:info@aisodinstitute.tech" className="hover:text-slate-700 transition-colors">Contact</a>
+        </div>
+        <p className="text-xs text-slate-400 mt-2">© 2026 <a href="https://aisod.tech/" className="hover:text-slate-600 transition-colors">AISOD</a>. All rights reserved.</p>
+      </footer>
     </div>
   )
 }
