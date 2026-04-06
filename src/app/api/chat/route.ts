@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '../../../lib/supabase';
+import { supabaseServer } from '../../../../lib/supabase';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
