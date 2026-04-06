@@ -131,9 +131,7 @@ export default function AdminPage() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full">
           <div className="text-center mb-6">
-            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <BarChart3 className="w-6 h-6 text-white" />
-            </div>
+            <img src="/aisod-logo.png" alt="AISOD" className="w-12 h-12 object-contain mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-slate-900">AISOD Admin</h1>
             <p className="text-slate-500 mt-1">Enter admin password to continue</p>
           </div>
@@ -165,9 +163,7 @@ export default function AdminPage() {
       <header className="bg-white border-b border-slate-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <BarChart3 className="w-4 h-4 text-white" />
-            </div>
+            <img src="/aisod-logo.png" alt="AISOD" className="w-8 h-8 object-contain" />
             <h1 className="text-xl font-bold text-slate-900">AISOD Admin</h1>
           </div>
           <button
@@ -190,7 +186,7 @@ export default function AdminPage() {
                 view === 'dashboard' ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-50'
               }`}
             >
-              <BarChart3 className="w-5 h-5" />
+              <img src="/aisod-logo.png" alt="" className="w-5 h-5 object-contain" />
               <span>Dashboard</span>
             </button>
             <button

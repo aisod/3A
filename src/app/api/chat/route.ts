@@ -467,37 +467,9 @@ export async function POST(request: NextRequest) {
       throw new Error('Empty response from AI');
     }
 
-    // Save to Supabase if we have user info and this is the first message (new session)
-    if (userInfo && sessionId) {
+    // Save to Supabase if we have a session ID
+    if (sessionId) {
       try {
-        // Find or create user
-        let { data: existingUser } = await supabaseServer
-          .from('users')
-          .select('id')
-          .eq('email', userInfo.email)
-          .single();
-
-        let userId: string;
-
-        if (existingUser) {
-          userId = existingUser.id;
-        } else {
-          const { data: newUser, error: userError } = await supabaseServer
-            .from('users')
-            .insert({
-              name: userInfo.name || '',
-              surname: userInfo.surname || '',
-              email: userInfo.email || null,
-              location: userInfo.location || null,
-              phone: userInfo.phone || null,
-            })
-            .select('id')
-            .single();
-
-          if (userError) throw userError;
-          userId = newUser.id;
-        }
-
         // Build full conversation for summary
         const fullConversation = [
           ...conversationHistory,
@@ -505,56 +477,99 @@ export async function POST(request: NextRequest) {
           { role: 'assistant' as const, content: aiMessage.trim() }
         ];
 
-        // Check if conversation session already exists
-        const { data: existingConv } = await supabaseServer
-          .from('conversations')
-          .select('id')
-          .eq('id', sessionId)
-          .single();
+        // If this is the first message and we have user info, create/find user
+        if (userInfo) {
+          let { data: existingUser } = await supabaseServer
+            .from('users')
+            .select('id')
+            .eq('email', userInfo.email)
+            .single();
 
-        if (existingConv) {
-          // Update existing conversation
-          await supabaseServer
-            .from('conversations')
-            .update({
-              messages: fullConversation,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', sessionId);
-        } else {
-          // Generate summary using AI
-          const summaryPrompt = [
-            {
-              role: 'system' as const,
-              content: 'Summarize this conversation in 2-3 sentences. Focus on what the user asked about and what help they need. Be concise.'
-            },
-            ...fullConversation.slice(-6).map((msg: any) => ({
-              role: msg.role,
-              content: msg.content
-            }))
-          ];
+          let userId: string;
 
-          let summary = '';
-          try {
-            const summaryResponse = await callOpenRouter(OPENROUTER_API_KEY, 'openai/gpt-4o-mini', summaryPrompt);
-            summary = summaryResponse.choices[0].message.content;
-          } catch {
-            summary = fullConversation.slice(0, 2).map((m: any) => m.content).join(' ').substring(0, 300);
+          if (existingUser) {
+            userId = existingUser.id;
+          } else {
+            const { data: newUser, error: userError } = await supabaseServer
+              .from('users')
+              .insert({
+                name: userInfo.name || '',
+                surname: userInfo.surname || '',
+                email: userInfo.email || null,
+                location: userInfo.location || null,
+                phone: userInfo.phone || null,
+              })
+              .select('id')
+              .single();
+
+            if (userError) throw userError;
+            userId = newUser.id;
           }
 
-          // Create new conversation
-          await supabaseServer
+          // Check if conversation session already exists
+          const { data: existingConv } = await supabaseServer
             .from('conversations')
-            .insert({
-              id: sessionId,
-              user_id: userId,
-              summary: summary,
-              messages: fullConversation,
-            });
+            .select('id')
+            .eq('id', sessionId)
+            .single();
+
+          if (existingConv) {
+            await supabaseServer
+              .from('conversations')
+              .update({
+                messages: fullConversation,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', sessionId);
+          } else {
+            const summaryPrompt = [
+              {
+                role: 'system' as const,
+                content: 'Summarize this conversation in 2-3 sentences. Focus on what the user asked about and what help they need. Be concise.'
+              },
+              ...fullConversation.slice(-6).map((msg: any) => ({
+                role: msg.role,
+                content: msg.content
+              }))
+            ];
+
+            let summary = '';
+            try {
+              const summaryResponse = await callOpenRouter(OPENROUTER_API_KEY, 'openai/gpt-4o-mini', summaryPrompt);
+              summary = summaryResponse.choices[0].message.content;
+            } catch {
+              summary = fullConversation.slice(0, 2).map((m: any) => m.content).join(' ').substring(0, 300);
+            }
+
+            await supabaseServer
+              .from('conversations')
+              .insert({
+                id: sessionId,
+                user_id: userId,
+                summary: summary,
+                messages: fullConversation,
+              });
+          }
+        } else {
+          // No user info (follow-up message), just update messages
+          const { data: existingConv } = await supabaseServer
+            .from('conversations')
+            .select('id')
+            .eq('id', sessionId)
+            .single();
+
+          if (existingConv) {
+            await supabaseServer
+              .from('conversations')
+              .update({
+                messages: fullConversation,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', sessionId);
+          }
         }
       } catch (dbError) {
         console.error('Supabase save error:', dbError);
-        // Don't fail the response if DB save fails
       }
     }
 
