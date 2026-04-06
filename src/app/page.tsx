@@ -120,6 +120,9 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [language, setLanguage] = useState<Language>('en')
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [showUserInfo, setShowUserInfo] = useState(false)
+  const [userInfo, setUserInfo] = useState({ name: '', surname: '', email: '', phone: '', location: '' })
   const inputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
@@ -128,15 +131,21 @@ export default function Home() {
   const handleSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) return
 
+    if (!showUserInfo && messages.length === 0) {
+      setShowUserInfo(true)
+      setQuery(searchQuery)
+      return
+    }
+
     setIsSearchMode(false)
     setIsLoading(true)
     
     const userMessage = { role: 'user' as const, content: searchQuery }
     
-    // Store current messages before updating
     const currentMessages = messages
+    const currentSessionId = sessionId || crypto.randomUUID()
+    if (!sessionId) setSessionId(currentSessionId)
     
-    // Add user message to conversation
     setMessages(prev => [...prev, userMessage])
     setQuery('')
 
@@ -149,7 +158,9 @@ export default function Home() {
         body: JSON.stringify({
           message: searchQuery,
           conversationHistory: currentMessages,
-          language: language
+          language: language,
+          userInfo: messages.length === 0 ? userInfo : null,
+          sessionId: currentSessionId
         })
       })
 
@@ -196,6 +207,9 @@ export default function Home() {
     setMessages([])
     setQuery('')
     setIsSidebarOpen(false)
+    setSessionId(null)
+    setShowUserInfo(false)
+    setUserInfo({ name: '', surname: '', email: '', phone: '', location: '' })
   }
 
   // Auto-focus input
@@ -348,6 +362,101 @@ export default function Home() {
         </div>
       </header>
 
+      {/* User Info Modal */}
+      {showUserInfo && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 sm:p-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">Before we start</h2>
+            <p className="text-slate-600 mb-6 text-sm sm:text-base">Tell us a bit about yourself so we can help you better.</p>
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              if (userInfo.name && userInfo.surname) {
+                setShowUserInfo(false)
+                handleSearch(query)
+              }
+            }}>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={userInfo.name}
+                      onChange={(e) => setUserInfo(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 text-sm"
+                      placeholder="John"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Surname *</label>
+                    <input
+                      type="text"
+                      required
+                      value={userInfo.surname}
+                      onChange={(e) => setUserInfo(prev => ({ ...prev, surname: e.target.value }))}
+                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 text-sm"
+                      placeholder="Doe"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={userInfo.email}
+                    onChange={(e) => setUserInfo(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 text-sm"
+                    placeholder="john@example.com"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                    <input
+                      type="tel"
+                      value={userInfo.phone}
+                      onChange={(e) => setUserInfo(prev => ({ ...prev, phone: e.target.value }))}
+                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 text-sm"
+                      placeholder="+264 81..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
+                    <input
+                      type="text"
+                      value={userInfo.location}
+                      onChange={(e) => setUserInfo(prev => ({ ...prev, location: e.target.value }))}
+                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 text-sm"
+                      placeholder="Windhoek"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUserInfo(false)
+                      setQuery('')
+                    }}
+                    className="flex-1 px-4 py-2.5 border-2 border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!userInfo.name || !userInfo.surname}
+                    className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                  >
+                    Start Chat
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="flex-1">
         {isSearchMode ? (
@@ -377,7 +486,7 @@ export default function Home() {
                    className="relative bg-white rounded-full shadow-md hover:shadow-lg border-2 border-slate-300 focus-within:border-blue-500 focus-within:shadow-xl transition-all duration-200 cursor-text overflow-hidden"
                    onClick={() => inputRef.current?.focus()}
                  >
-                   <div className="flex items-center px-4 sm:px-6 py-3.5 sm:py-4">
+                    <div className="flex items-center px-4 sm:px-6 py-2 sm:py-2.5">
                      <Search className="w-5 h-5 text-slate-400 flex-shrink-0" />
                      <input
                        ref={inputRef}
@@ -498,7 +607,7 @@ export default function Home() {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                        placeholder={t.chatPlaceholder}
-                       className="w-full px-4 py-3 sm:py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl sm:rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base appearance-none"
+                        className="w-full px-4 py-2 sm:py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl sm:rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base appearance-none"
                        aria-label="Chat input"
                        autoComplete="off"
                        style={{
