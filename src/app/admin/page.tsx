@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Users, MessageSquare, BarChart3, ArrowLeft, Eye, Search, LogOut, RefreshCw, Clock, MapPin, Phone, Mail, Calendar } from 'lucide-react'
+import { Users, MessageSquare, BarChart3, ArrowLeft, Eye, Search, LogOut, RefreshCw, Clock, MapPin, Phone, Mail, Calendar, CheckCircle } from 'lucide-react'
 
 type User = {
   id: string
@@ -38,6 +38,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [error, setError] = useState('')
+  const [syncMessage, setSyncMessage] = useState('')
 
   const fetchAdmin = async (type?: string, id?: string) => {
     const token = localStorage.getItem('admin_token')
@@ -71,6 +72,33 @@ export default function AdminPage() {
     }
   }
 
+  const syncConversations = async () => {
+    const token = localStorage.getItem('admin_token')
+    if (!token) return
+
+    try {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 
+          'x-admin-token': token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'sync' })
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        if (data.synced > 0) {
+          setSyncMessage(`Synced ${data.synced} conversation${data.synced > 1 ? 's' : ''}`)
+          setTimeout(() => setSyncMessage(''), 5000)
+          fetchAdmin()
+        }
+      }
+    } catch (e) {
+      console.error('Sync failed:', e)
+    }
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -98,7 +126,13 @@ export default function AdminPage() {
     const token = localStorage.getItem('admin_token')
     if (token) {
       setIsAuthenticated(true)
-      fetchAdmin().finally(() => setInitDone(true))
+      fetchAdmin().finally(() => {
+        setInitDone(true)
+        if (!sessionStorage.getItem('sync_done')) {
+          sessionStorage.setItem('sync_done', 'true')
+          syncConversations()
+        }
+      })
     } else {
       setInitDone(true)
     }
@@ -120,11 +154,11 @@ export default function AdminPage() {
   }
 
   const filteredUsers = (users || []).filter(u =>
-    `${u.name} ${u.surname} ${u.email || ''} ${u.location || ''}`.toLowerCase().includes(searchTerm.toLowerCase())
+    `${u.name} ${u.surname} ${u.email || ''} ${u.location || ''} ${u.phone || ''} ${u.age || ''}`.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const filteredConvs = (conversations || []).filter(c =>
-    `${c.summary || ''} ${c.users?.name || ''} ${c.users?.surname || ''} ${c.users?.email || ''}`.toLowerCase().includes(searchTerm.toLowerCase())
+    `${c.summary || ''} ${c.users?.name || ''} ${c.users?.surname || ''} ${c.users?.email || ''} ${c.users?.phone || ''} ${c.users?.age || ''}`.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   if (!isAuthenticated) {
@@ -160,6 +194,14 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Sync Notification Toast */}
+      {syncMessage && (
+        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center space-x-2 animate-fade-in">
+          <CheckCircle className="w-5 h-5" />
+          <span className="text-sm font-medium">{syncMessage}</span>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white border-b border-slate-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -167,13 +209,22 @@ export default function AdminPage() {
             <img src="/aisod-logo.png" alt="AISOD" className="w-8 h-8 object-contain" />
             <h1 className="text-xl font-bold text-slate-900">AISOD Admin</h1>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center space-x-2 px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="text-sm">Logout</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={syncConversations}
+              className="flex items-center space-x-2 px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors text-sm"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span className="hidden sm:inline">Sync</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center space-x-2 px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors text-sm"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
         </div>
       </header>
 
