@@ -613,7 +613,7 @@ export async function POST(request: NextRequest) {
               });
           }
         } else {
-          // No user info extracted yet, just update conversation messages if it exists
+          // No user info extracted yet, still save the conversation
           const { data: existingConv } = await supabaseServer
             .from('conversations')
             .select('id')
@@ -628,6 +628,35 @@ export async function POST(request: NextRequest) {
                 updated_at: new Date().toISOString(),
               })
               .eq('id', sessionId);
+          } else {
+            // Create conversation without a user link
+            const summaryPrompt = [
+              {
+                role: 'system' as const,
+                content: 'Summarize this conversation in 2-3 sentences. Focus on what the user asked about and what help they need. Be concise.'
+              },
+              ...fullConversation.slice(-6).map((msg: any) => ({
+                role: msg.role,
+                content: msg.content
+              }))
+            ];
+
+            let summary = '';
+            try {
+              const summaryResponse = await callOpenRouter(OPENROUTER_API_KEY, 'openai/gpt-4o-mini', summaryPrompt);
+              summary = summaryResponse.choices[0].message.content;
+            } catch {
+              summary = fullConversation.slice(0, 2).map((m: any) => m.content).join(' ').substring(0, 300);
+            }
+
+            await supabaseServer
+              .from('conversations')
+              .insert({
+                id: sessionId,
+                user_id: null,
+                summary: summary,
+                messages: fullConversation,
+              });
           }
         }
       } catch (dbError) {
